@@ -177,5 +177,3 @@ MIT (same as ProjectFalcon)
 ---
 
 **Built by Johanna for Project Falcon**
-
-"Sovereign can also be High-Performance. Join the pride."
