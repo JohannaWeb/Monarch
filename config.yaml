@@ -2,8 +2,13 @@
 
 # Model configuration
 model:
+  # Direct inference (GPU required)
   base_model: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"  # Start with TinyLlama, upgrade to Llama-2-7b with more compute
   output_dir: "models/monarch_lora"
+
+  # Ollama inference (recommended for development)
+  ollama_model: "monarch-falcon"  # Fine-tuned Mistral via Ollama
+  ollama_host: "http://localhost:11434"
 
 # LoRA configuration
 lora:
@@ -49,6 +54,16 @@ inference:
   temperature: 0.7
   top_p: 0.9
   device: "auto"  # or cuda/cpu
+
+# Guardrails configuration
+guardrails:
+  enabled: true
+  max_input_length: 2000       # chars
+  blocked_keywords:            # input & output blocklist
+    - "step-by-step instructions to make"
+    - "how to hack"
+    - "synthesize drugs"
+  log_file: "logs/guardrail_events.jsonl"
 
 # Metadata
 metadata:

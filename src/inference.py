@@ -4,10 +4,17 @@
 import torch
 import json
 import argparse
+import yaml
+import sys
 from pathlib import Path
 from typing import Optional
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
+
+# Add src directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from guardrails import MonarchGuardrails
 
 
 class MonarchInference:
@@ -17,6 +24,7 @@ class MonarchInference:
         self,
         model_path: str = "models/monarch_lora",
         base_model: Optional[str] = None,
+        config_file: str = "config.yaml",
     ):
         self.model_path = Path(model_path)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -31,6 +39,17 @@ class MonarchInference:
         self.base_model = base_model or "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
         self.tokenizer = None
         self.model = None
+
+        # Load guardrails config from config.yaml
+        config_file_path = Path(config_file)
+        if config_file_path.exists():
+            with open(config_file_path, 'r') as f:
+                full_config = yaml.safe_load(f)
+                guardrails_config = full_config.get("guardrails", {})
+        else:
+            guardrails_config = {}
+
+        self.guardrails = MonarchGuardrails(guardrails_config)
 
         self.load_model()
 
@@ -66,6 +85,13 @@ class MonarchInference:
         top_p: float = 0.9,
     ) -> str:
         """Generate response from prompt."""
+        # 1. Input check
+        result = self.guardrails.check_input(prompt)
+        if not result.allowed:
+            self.guardrails.log_event("BLOCKED_INPUT", prompt, result.reason)
+            return f"[Monarch] I can't respond to that. ({result.reason})"
+
+        # 2. Generate
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",
@@ -84,6 +110,14 @@ class MonarchInference:
             )
 
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+        # 3. Output check
+        result = self.guardrails.check_output(response)
+        if not result.allowed:
+            self.guardrails.log_event("BLOCKED_OUTPUT", prompt, result.reason)
+            return "[Monarch] I generated a response I can't share."
+
+        self.guardrails.log_event("ALLOWED", prompt, None)
         return response
 
     def chat(self) -> None:
@@ -112,6 +146,8 @@ def main():
                         help="Path to Monarch LoRA model")
     parser.add_argument("--base-model", default=None,
                         help="Base model (if different from config)")
+    parser.add_argument("--config", default="config.yaml",
+                        help="Path to config.yaml file")
     parser.add_argument("--prompt", default=None,
                         help="Prompt to generate from (interactive if not provided)")
     parser.add_argument("--max-length", type=int, default=256,
@@ -124,6 +160,7 @@ def main():
     inference = MonarchInference(
         model_path=args.model,
         base_model=args.base_model,
+        config_file=args.config,
     )
 
     if args.prompt:
