@@ -137,16 +137,18 @@ class MonarchTrainer:
             output_dir=str(self.output_dir),
             num_train_epochs=num_epochs,
             per_device_train_batch_size=batch_size,
-            gradient_accumulation_steps=4,
+            gradient_accumulation_steps=2,
             learning_rate=learning_rate,
             warmup_steps=warmup_steps,
             weight_decay=0.01,
             save_steps=save_steps,
             save_total_limit=2,
-            logging_steps=10,
+            logging_steps=5,
             max_grad_norm=1.0,
             optim="paged_adamw_8bit" if torch.cuda.is_available() else "adamw_torch",
-            bf16=torch.cuda.is_available(),
+            bf16=False,
+            fp16=torch.cuda.is_available(),
+            gradient_checkpointing=True,
         )
 
         trainer = Trainer(
