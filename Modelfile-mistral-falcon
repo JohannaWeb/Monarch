@@ -1,4 +1,4 @@
-FROM mistral:7b-instruct-v0.1
+FROM mistral
 
 # Set parameters for inference
 PARAMETER top_k 40

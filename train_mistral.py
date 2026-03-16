@@ -79,19 +79,20 @@ def main():
     # Setup model
     model, tokenizer = setup_model()
 
-    # Training arguments
+    # Training arguments (reduced for 8GB GPU)
     training_args = TrainingArguments(
         output_dir=OUTPUT_DIR,
         num_train_epochs=3,
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=2,
-        warmup_steps=100,
+        per_device_train_batch_size=1,  # Reduced from 4 for 8GB GPU
+        gradient_accumulation_steps=4,  # Increased to maintain effective batch size
+        warmup_steps=50,
         learning_rate=2e-4,
         bf16=True,
-        logging_steps=10,
-        save_steps=len(dataset) // 4,
-        save_total_limit=3,
+        logging_steps=5,
+        save_steps=len(dataset) // 2,
+        save_total_limit=2,
         push_to_hub=False,
+        optim="paged_adamw_32bit",  # More memory efficient
     )
 
     # Trainer
