@@ -1,4 +1,4 @@
-# Monarch 🦅
+# Monarch
 
 Expert LLM fine-tuned specifically for Project Falcon / Juntos — the LGBT+ decentralized community platform.
 
