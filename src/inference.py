@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 """Run inference with trained Monarch model."""
 
-import torch
-import json
 import argparse
-import yaml
-import sys
+import json
 from pathlib import Path
 from typing import Optional
-from transformers import AutoTokenizer, AutoModelForCausalLM
+
+import torch
 from peft import PeftModel
-
-# Add src directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
-
-from guardrails import MonarchGuardrails
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class MonarchInference:
@@ -24,7 +18,6 @@ class MonarchInference:
         self,
         model_path: str = "models/monarch_lora",
         base_model: Optional[str] = None,
-        config_file: str = "config.yaml",
     ):
         self.model_path = Path(model_path)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,24 +25,13 @@ class MonarchInference:
         # Load config to get base model if not provided
         config_path = self.model_path / "monarch_config.json"
         if config_path.exists() and not base_model:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = json.load(f)
                 base_model = config["base_model"]
 
         self.base_model = base_model or "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
         self.tokenizer = None
         self.model = None
-
-        # Load guardrails config from config.yaml
-        config_file_path = Path(config_file)
-        if config_file_path.exists():
-            with open(config_file_path, 'r') as f:
-                full_config = yaml.safe_load(f)
-                guardrails_config = full_config.get("guardrails", {})
-        else:
-            guardrails_config = {}
-
-        self.guardrails = MonarchGuardrails(guardrails_config)
 
         self.load_model()
 
@@ -69,13 +51,13 @@ class MonarchInference:
             trust_remote_code=True,
         )
 
-        print(f"[OK] Base model loaded")
+        print(f"✓ Base model loaded")
         print(f"Loading LoRA weights from {self.model_path}")
 
         self.model = PeftModel.from_pretrained(base, self.model_path)
         self.model.to(self.device)
 
-        print(f"[OK] LoRA weights loaded")
+        print(f"LoRA weights loaded")
 
     def generate(
         self,
@@ -85,13 +67,6 @@ class MonarchInference:
         top_p: float = 0.9,
     ) -> str:
         """Generate response from prompt."""
-        # 1. Input check
-        result = self.guardrails.check_input(prompt)
-        if not result.allowed:
-            self.guardrails.log_event("BLOCKED_INPUT", prompt, result.reason)
-            return f"[Monarch] I can't respond to that. ({result.reason})"
-
-        # 2. Generate
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",
@@ -110,25 +85,17 @@ class MonarchInference:
             )
 
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-        # 3. Output check
-        result = self.guardrails.check_output(response)
-        if not result.allowed:
-            self.guardrails.log_event("BLOCKED_OUTPUT", prompt, result.reason)
-            return "[Monarch] I generated a response I can't share."
-
-        self.guardrails.log_event("ALLOWED", prompt, None)
         return response
 
     def chat(self) -> None:
         """Interactive chat with Monarch."""
-        print("\nMonarch - Interactive Mode")
+        print("\Monarch - Interactive Mode")
         print("Type 'quit' to exit\n")
 
         while True:
             prompt = input("You: ").strip()
 
-            if prompt.lower() == 'quit':
+            if prompt.lower() == "quit":
                 print("Goodbye!")
                 break
 
@@ -142,25 +109,29 @@ class MonarchInference:
 def main():
     """Main inference entry point."""
     parser = argparse.ArgumentParser(description="Run Monarch inference")
-    parser.add_argument("--model", default="models/monarch_lora",
-                        help="Path to Monarch LoRA model")
-    parser.add_argument("--base-model", default=None,
-                        help="Base model (if different from config)")
-    parser.add_argument("--config", default="config.yaml",
-                        help="Path to config.yaml file")
-    parser.add_argument("--prompt", default=None,
-                        help="Prompt to generate from (interactive if not provided)")
-    parser.add_argument("--max-length", type=int, default=256,
-                        help="Max generation length")
-    parser.add_argument("--temperature", type=float, default=0.7,
-                        help="Temperature for sampling")
+    parser.add_argument(
+        "--model", default="models/monarch_lora", help="Path to Monarch LoRA model"
+    )
+    parser.add_argument(
+        "--base-model", default=None, help="Base model (if different from config)"
+    )
+    parser.add_argument(
+        "--prompt",
+        default=None,
+        help="Prompt to generate from (interactive if not provided)",
+    )
+    parser.add_argument(
+        "--max-length", type=int, default=256, help="Max generation length"
+    )
+    parser.add_argument(
+        "--temperature", type=float, default=0.7, help="Temperature for sampling"
+    )
 
     args = parser.parse_args()
 
     inference = MonarchInference(
         model_path=args.model,
         base_model=args.base_model,
-        config_file=args.config,
     )
 
     if args.prompt:
