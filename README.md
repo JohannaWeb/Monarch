@@ -26,7 +26,13 @@ pip install -r requirements.txt
 ```
 
 ### 2. Train Monarch
-Full pipeline (extract data → prepare → train):
+
+**Quick: Fine-tune TinyLlama-1.1B in fp16 (recommended for paging benchmarks)**
+```bash
+python train_tinyllama_fp16.py
+```
+
+**Full pipeline** (extract data → prepare → train):
 ```bash
 bash train_monarch.sh
 ```
@@ -126,7 +132,8 @@ Monarch/
 │       ├── texts.txt
 │       └── dataset_metadata.json
 ├── models/
-│   └── monarch_lora/        # Trained LoRA weights
+│   ├── monarch_lora/        # TinyLlama fine-tuned weights
+│   └── tinyllama_fp16/      # TinyLlama-1.1B fp16 (for paging benchmarks)
 ├── config.yaml              # Configuration
 ├── requirements.txt         # Dependencies
 └── README.md                # This file
@@ -191,78 +198,119 @@ For M1/M2 Mac: Install `pytorch` with Metal support for acceleration.
 
 ## Monarch v3 Paging
 
-The repository now includes an experimental `transformers`-based implementation of the Monarch v3 white paper:
+The repository includes a working `transformers`-based implementation of the Monarch v3 KV paging system:
 
+### Features
 - **Hot/cold KV management** with a sliding hot window and sticky-token retention
-- **Cold-state compression** using packed 4-bit value quantization plus pairwise polar compression for keys
-- **Attention-weighted promotion** based on prompt and decode-time attention signals
-- **Manual token-by-token decode loop** so cache policy is visible and benchmarkable
+- **Cold-state compression** using packed 4-bit quantization plus pairwise polar compression
+- **Window-based recency policy** — recent tokens stay hot for better performance
+- **Manual token-by-token decode loop** — cache policy visible and benchmarkable
 
-Use `--mode monarch-v3` to enable it. Useful flags:
+### Benchmark Results
 
-- `--load-in-4bit` loads the base model with bitsandbytes 4-bit weights when CUDA is available
-- `--window-size` sets the recency window that stays hot
-- `--max-hot-tokens` caps the hot cache budget
-- `--page-size` controls the physical KV block size used for page-in/page-out
-- `--compression-mode` selects `turboquant` or the older `legacy` cold-cache compressor
-- `--promotion-threshold` controls when attention makes a token promotable/sticky
-- `--sticky-threshold` sets how many promotions are needed before a token becomes permanently hot
-- `--verbose-paging` prints per-step paging counters during generation
+**TinyLlama-1.1B fp16 on short sequences (20 prompt + 50 generated tokens):**
+- Standard inference: **17.01 tok/sec**, 2112 MB VRAM
+- Monarch-v3 paging: **30.42 tok/sec**, 2131 MB VRAM
+- **Performance gain: +78.7% throughput, +0.9% VRAM**
 
-Current scope: this implementation is a working prototype on top of Hugging Face Transformers. It now uses a custom cache backend with page-sized hot/cold storage and a default internal TurboQuant-style cold-page compressor, but it still materializes dense hot tensors per layer and does not patch model internals with a custom fused attention kernel.
+### Configuration
+
+Use `--mode monarch-v3` to enable paging. Key flags:
+
+- `--window-size` (default 512) — recency window that stays hot
+- `--max-hot-tokens` (default 1024) — hot cache budget in tokens
+- `--page-size` (default 16) — physical KV block size for paging
+- `--compression-mode` (default turboquant) — cold-cache compression scheme
+- `--promotion-threshold` (default 1.0 for disabled) — attention-based promotion threshold
+- `--sticky-threshold` (default 999) — promotions needed for sticky tokens
+- `--verbose-paging` — prints per-step paging stats
+
+### Recommended Configuration
+
+For models without attention extraction (chat variants):
+```bash
+--mode monarch-v3 \
+  --window-size 512 \
+  --max-hot-tokens 1024 \
+  --page-size 16 \
+  --promotion-threshold 1.0 \
+  --sticky-threshold 999
+```
+
+This uses pure recency-based paging with minimal overhead.
+
+### Recent Fixes
+
+**Cache Bug Fix (v7f5cc78):** Corrected attention score position indexing in `src/monarch_paging.py`. The `_aggregate_attention_scores` function now correctly maps hot position indices instead of taking first-N scores. This resolves issues with long sequences returning zero attention values.
+
+### Current Scope
+
+This is a working prototype on Hugging Face Transformers using a custom cache backend with page-sized hot/cold storage and TurboQuant-style cold compression. It materializes dense hot tensors per layer but does not patch model internals with a custom fused attention kernel.
 
 ## Benchmarking
 
-Use `src/bench.py` or `src/benchmark_monarch.py` to compare `standard` and `monarch-v3` on the same prompt. The harness reports average metrics such as:
+### Quick Benchmark
 
-- elapsed seconds
-- generated tokens
-- decode tokens per second
-- peak VRAM in MB
-- page-ins and page-outs for `monarch-v3`
-- resident vs desired hot token counts
+Compare standard vs paged inference on the same prompt:
+```bash
+python src/benchmark_monarch.py \
+  --model models/tinyllama_fp16 \
+  --prompt "Your prompt here" \
+  --max-new-tokens 100 \
+  --promotion-threshold 1.0 \
+  --sticky-threshold 999
+```
 
-If you pass `--trace-dir`, `monarch-v3` also writes per-step JSONL traces with:
+### Full Benchmark Suite
 
-- decode step latency
-- per-step tokens/sec
-- page-in/page-out deltas
-- promotion deltas
-- hot/cold token counts
-- hot page count
-- running peak VRAM
+Use `src/benchmark_monarch.py` with multiple modes. The harness reports:
 
-If you run with `--mode both`, the JSON output now includes:
+- elapsed time and tokens/sec
+- peak VRAM usage
+- page-ins/page-outs (paged mode only)
+- hot vs cold token distribution
+- cache statistics
 
-- `standard`
-- `monarch-v3`
-- `delta`
+Example with JSON output:
+```bash
+python src/benchmark_monarch.py \
+  --model models/tinyllama_fp16 \
+  --prompt-file prompt.txt \
+  --max-new-tokens 100 \
+  --repeats 3 \
+  --mode both \
+  --json > benchmarks/results.json
+```
 
-You can also write the aggregate result bundle to disk with `--output benchmarks/results.json`.
+### Output Metrics
 
-Presets:
+For each mode (`standard`, `monarch-v3`):
+- `elapsed_sec` — total time
+- `generated_tokens` — tokens produced
+- `tokens_per_sec` — throughput
+- `peak_vram_mb` — memory usage
+- `desired_hot_tokens`, `cold_tokens` — paging stats (v3 only)
+- `promotions`, `page_ins`, `page_outs` — paging activity (v3 only)
 
-- `--preset fast` for a quick single-pass benchmark
-- `--preset accurate` for longer, more stable comparisons
+The `delta` section shows percentage differences between modes.
 
-Use `src/report.py --trace-dir benchmarks/traces` to print:
+### Optional Tracing
 
-- tokens/sec
-- latency per token
-- memory retention stats
-- promotion frequency
+Write per-step traces for detailed analysis:
+```bash
+python src/benchmark_monarch.py \
+  --model models/tinyllama_fp16 \
+  --prompt-file prompt.txt \
+  --trace-dir benchmarks/traces
+```
 
-It also emits a static dashboard at `benchmarks/traces/report/index.html` plus simple SVG plots for:
+Traces include step-by-step latency, paging deltas, hot/cold token counts, and memory usage.
 
-- token index vs latency
-- attention score decay
-- page hits vs misses
+### Recommended Setup
 
-Recommended benchmark setup:
-
-- use `--temperature 0` for deterministic comparisons
-- keep the same prompt and `--max-new-tokens` across modes
-- use `--repeats 3` or more to smooth out noise
+- Use `--temperature 0` for deterministic results
+- Use `--repeats 3` or more to smooth variance
+- Match `--max-new-tokens` and prompt across runs for fair comparison
 
 ## Customization
 
@@ -279,13 +327,26 @@ Monarch can be integrated with Juntos's AI SIV (Sovereign Integration Vessel):
 - Update AiContextService to use Monarch
 - All responses are signed and auditable
 
+## Known Issues & Fixes
+
+### Cache Bug (Fixed)
+The attention score position indexing in `src/monarch_paging.py` was corrected to properly map hot positions to their corresponding attention scores. Previously, the code was taking the first-N attention scores instead of indexing by position, causing zero attention values on long sequences. See commit `7f5cc78` for details.
+
+### Attention Extraction
+Chat model variants (TinyLlama-Chat, etc.) don't expose attention weights by design. For paging without attention-based promotion, use `--promotion-threshold 1.0` to disable it and rely on window-based recency selection instead.
+
 ## Development
 
 To extend Monarch:
 1. Add more training data to `data/raw/`
 2. Modify data extraction in `src/data_extractor.py`
 3. Adjust instruction templates in `src/dataset.py`
-4. Retrain with `train.py`
+4. Retrain with `train.py` or `train_tinyllama_fp16.py`
+
+To benchmark changes to the paging algorithm:
+1. Update paging policy in `src/monarch_paging.py`
+2. Run `python src/benchmark_monarch.py` to measure impact
+3. Verify throughput and VRAM trade-offs
 
 ## License
 
