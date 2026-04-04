@@ -66,6 +66,42 @@ python src/inference.py \
   --prompt "What is Juntos?"
 ```
 
+**Monarch v3 paged inference:**
+```bash
+python src/inference.py \
+  --model models/monarch_lora \
+  --mode monarch-v3 \
+  --load-in-4bit \
+  --window-size 512 \
+  --max-hot-tokens 768 \
+  --page-size 16 \
+  --compression-mode turboquant \
+  --prompt "Summarize Bastion's trust pipeline"
+```
+
+**Benchmark standard vs paged inference:**
+```bash
+python src/bench.py \
+  --model models/monarch_lora \
+  --mode both \
+  --preset fast \
+  --load-in-4bit \
+  --max-new-tokens 128 \
+  --page-size 16 \
+  --compression-mode turboquant \
+  --prompt-file prompt.txt \
+  --trace-dir benchmarks/traces \
+  --output benchmarks/results.json \
+  --json
+```
+
+**Generate a report from traces:**
+```bash
+python src/report.py \
+  --trace-dir benchmarks/traces \
+  --results benchmarks/results.json
+```
+
 ## Architecture
 
 ```
@@ -74,7 +110,11 @@ Monarch/
 │   ├── data_extractor.py    # Extract from ProjectFalcon
 │   ├── dataset.py           # Prepare training data
 │   ├── train.py             # Training with LoRA
-│   └── inference.py         # Run the model
+│   ├── inference.py         # Standard + Monarch v3 inference entrypoint
+│   ├── monarch_paging.py    # KV paging, compression, and promotion policy
+│   ├── benchmark_monarch.py # Benchmark harness for standard vs paged decode
+│   ├── bench.py             # Short benchmark CLI entrypoint
+│   └── report.py            # Trace summaries and SVG plot generation
 ├── data/
 │   ├── raw/                 # Extracted from ProjectFalcon
 │   │   ├── documentation.jsonl
@@ -148,6 +188,81 @@ For M1/M2 Mac: Install `pytorch` with Metal support for acceleration.
 - CPU: 8+ cores
 - RAM: 32GB
 - Storage: 20GB
+
+## Monarch v3 Paging
+
+The repository now includes an experimental `transformers`-based implementation of the Monarch v3 white paper:
+
+- **Hot/cold KV management** with a sliding hot window and sticky-token retention
+- **Cold-state compression** using packed 4-bit value quantization plus pairwise polar compression for keys
+- **Attention-weighted promotion** based on prompt and decode-time attention signals
+- **Manual token-by-token decode loop** so cache policy is visible and benchmarkable
+
+Use `--mode monarch-v3` to enable it. Useful flags:
+
+- `--load-in-4bit` loads the base model with bitsandbytes 4-bit weights when CUDA is available
+- `--window-size` sets the recency window that stays hot
+- `--max-hot-tokens` caps the hot cache budget
+- `--page-size` controls the physical KV block size used for page-in/page-out
+- `--compression-mode` selects `turboquant` or the older `legacy` cold-cache compressor
+- `--promotion-threshold` controls when attention makes a token promotable/sticky
+- `--sticky-threshold` sets how many promotions are needed before a token becomes permanently hot
+- `--verbose-paging` prints per-step paging counters during generation
+
+Current scope: this implementation is a working prototype on top of Hugging Face Transformers. It now uses a custom cache backend with page-sized hot/cold storage and a default internal TurboQuant-style cold-page compressor, but it still materializes dense hot tensors per layer and does not patch model internals with a custom fused attention kernel.
+
+## Benchmarking
+
+Use `src/bench.py` or `src/benchmark_monarch.py` to compare `standard` and `monarch-v3` on the same prompt. The harness reports average metrics such as:
+
+- elapsed seconds
+- generated tokens
+- decode tokens per second
+- peak VRAM in MB
+- page-ins and page-outs for `monarch-v3`
+- resident vs desired hot token counts
+
+If you pass `--trace-dir`, `monarch-v3` also writes per-step JSONL traces with:
+
+- decode step latency
+- per-step tokens/sec
+- page-in/page-out deltas
+- promotion deltas
+- hot/cold token counts
+- hot page count
+- running peak VRAM
+
+If you run with `--mode both`, the JSON output now includes:
+
+- `standard`
+- `monarch-v3`
+- `delta`
+
+You can also write the aggregate result bundle to disk with `--output benchmarks/results.json`.
+
+Presets:
+
+- `--preset fast` for a quick single-pass benchmark
+- `--preset accurate` for longer, more stable comparisons
+
+Use `src/report.py --trace-dir benchmarks/traces` to print:
+
+- tokens/sec
+- latency per token
+- memory retention stats
+- promotion frequency
+
+It also emits a static dashboard at `benchmarks/traces/report/index.html` plus simple SVG plots for:
+
+- token index vs latency
+- attention score decay
+- page hits vs misses
+
+Recommended benchmark setup:
+
+- use `--temperature 0` for deterministic comparisons
+- keep the same prompt and `--max-new-tokens` across modes
+- use `--repeats 3` or more to smooth out noise
 
 ## Customization
 

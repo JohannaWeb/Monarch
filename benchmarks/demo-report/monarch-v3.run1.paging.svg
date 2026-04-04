@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320">
+<rect width="100%" height="100%" fill="white"/>
+<text x="40" y="24" font-size="18" font-family="monospace">monarch-v3.run1: page hits vs misses</text>
+<line x1="40" y1="280" x2="920" y2="280" stroke="#333"/>
+<line x1="40" y1="40" x2="40" y2="280" stroke="#333"/>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="40.00,40.00 260.00,280.00 480.00,40.00 700.00,280.00 920.00,40.00"/>
+<text x="740" y="58" font-size="12" font-family="monospace" fill="#1f77b4">page hit</text>
+<polyline fill="none" stroke="#d62728" stroke-width="2" points="40.00,280.00 260.00,40.00 480.00,280.00 700.00,40.00 920.00,280.00"/>
+<text x="740" y="76" font-size="12" font-family="monospace" fill="#d62728">page miss</text>
+</svg>

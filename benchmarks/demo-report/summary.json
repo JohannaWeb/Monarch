@@ -1,0 +1,30 @@
+{
+  "_aggregate": {
+    "avg_attention_score": 0.09133333333333334,
+    "avg_importance_ema": 0.13699999999999998,
+    "desired_hot_tokens": 64.0,
+    "latency_per_token_ms": 30.0,
+    "page_hit_rate": 0.6,
+    "page_miss_rate": 0.4,
+    "peak_vram_mb": 517.0,
+    "promotion_frequency": 1.0,
+    "resident_hot_tokens": 80.0,
+    "retention_ratio": 0.7768454987345466,
+    "steps": 5.0,
+    "tokens_per_sec": 45.666666666666664
+  },
+  "monarch-v3.run1.jsonl": {
+    "avg_attention_score": 0.09133333333333334,
+    "avg_importance_ema": 0.13699999999999998,
+    "desired_hot_tokens": 64.0,
+    "latency_per_token_ms": 30.0,
+    "page_hit_rate": 0.6,
+    "page_miss_rate": 0.4,
+    "peak_vram_mb": 517.0,
+    "promotion_frequency": 1.0,
+    "resident_hot_tokens": 80.0,
+    "retention_ratio": 0.7768454987345466,
+    "steps": 5.0,
+    "tokens_per_sec": 45.666666666666664
+  }
+}

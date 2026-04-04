@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320">
+<rect width="100%" height="100%" fill="white"/>
+<text x="40" y="24" font-size="18" font-family="monospace">monarch-v3.run1: attention score decay</text>
+<line x1="40" y1="280" x2="920" y2="280" stroke="#333"/>
+<line x1="40" y1="40" x2="40" y2="280" stroke="#333"/>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="40.00,132.31 260.00,224.62 480.00,255.38 700.00,270.77 920.00,280.00"/>
+<text x="740" y="58" font-size="12" font-family="monospace" fill="#1f77b4">avg attention</text>
+<polyline fill="none" stroke="#d62728" stroke-width="2" points="40.00,40.00 260.00,178.46 480.00,224.62 700.00,247.69 920.00,261.54"/>
+<text x="740" y="76" font-size="12" font-family="monospace" fill="#d62728">avg importance</text>
+</svg>

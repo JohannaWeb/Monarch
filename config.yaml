@@ -54,6 +54,16 @@ inference:
   temperature: 0.7
   top_p: 0.9
   device: "auto"  # or cuda/cpu
+  mode: "standard"  # standard or monarch-v3
+  load_in_4bit: false
+  window_size: 512
+  max_hot_tokens: 768
+  page_size: 16
+  compression_mode: "turboquant"
+  promotion_threshold: 0.12
+  sticky_threshold: 2
+  importance_decay: 0.92
+  initial_sticky_tokens: 16
 
 # Guardrails configuration
 guardrails:

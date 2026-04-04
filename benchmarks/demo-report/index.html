@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monarch Benchmark Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --ink: #1d1a16;
+      --card: #fffdf8;
+      --accent: #9f3a20;
+      --line: #d8cfc1;
+    }
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", serif;
+      background: radial-gradient(circle at top, #fff9ef, var(--bg));
+      color: var(--ink);
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2.6rem;
+      letter-spacing: -0.03em;
+    }
+    .lede {
+      margin: 0 0 28px;
+      color: #5c554b;
+      font-size: 1.05rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(29, 26, 22, 0.06);
+    }
+    .featured {
+      background: linear-gradient(180deg, #fff7ea, #fffdf8);
+    }
+    .span-3 {
+      grid-column: 1 / -1;
+    }
+    .compare {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+    }
+    .pill {
+      display: inline-block;
+      margin: 0 0 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f1dfcc;
+      color: var(--accent);
+      font-size: 0.88rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+      text-transform: lowercase;
+      color: var(--accent);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th:last-child, td:last-child {
+      text-align: right;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+    .plots {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .plot {
+      margin: 0;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(29, 26, 22, 0.06);
+    }
+    .plot img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+      background: white;
+    }
+    .plot figcaption {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #5c554b;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Monarch Benchmark Dashboard</h1>
+    <p class="lede">Static report for standard vs paged inference, including aggregate metrics, deltas, compression mode, and per-step trace plots.</p>
+    <div class="grid"><section class='span-3 compare'><section class='card'><h2>standard</h2><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>peak_vram_mb</td><td>1024.0000</td></tr><tr><td>tokens_per_sec</td><td>40.0000</td></tr></tbody></table></section><section class='card'><h2>monarch-v3</h2><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>peak_vram_mb</td><td>900.0000</td></tr><tr><td>tokens_per_sec</td><td>35.0000</td></tr></tbody></table></section><section class='card'><h2>delta</h2><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>peak_vram_mb_abs</td><td>-124.0000</td></tr><tr><td>tokens_per_sec_abs</td><td>-5.0000</td></tr></tbody></table></section></section><section class='card featured'><h2>config</h2><p class='pill'>compression mode: unknown</p><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>mode</td><td>both</td></tr><tr><td>page_size</td><td>16</td></tr><tr><td>preset</td><td>fast</td></tr></tbody></table></section><section class='card'><h2>trace aggregate</h2><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>avg_attention_score</td><td>0.0913</td></tr><tr><td>avg_importance_ema</td><td>0.1370</td></tr><tr><td>desired_hot_tokens</td><td>64.0000</td></tr><tr><td>latency_per_token_ms</td><td>30.0000</td></tr><tr><td>page_hit_rate</td><td>0.6000</td></tr><tr><td>page_miss_rate</td><td>0.4000</td></tr><tr><td>peak_vram_mb</td><td>517.0000</td></tr><tr><td>promotion_frequency</td><td>1.0000</td></tr><tr><td>resident_hot_tokens</td><td>80.0000</td></tr><tr><td>retention_ratio</td><td>0.7768</td></tr><tr><td>steps</td><td>5.0000</td></tr><tr><td>tokens_per_sec</td><td>45.6667</td></tr></tbody></table></section></div>
+    <div class="plots"><figure class='plot'><img src='monarch-v3.run1.attention.svg' alt='monarch-v3.run1.attention.svg' /><figcaption>monarch-v3.run1.attention.svg</figcaption></figure><figure class='plot'><img src='monarch-v3.run1.latency.svg' alt='monarch-v3.run1.latency.svg' /><figcaption>monarch-v3.run1.latency.svg</figcaption></figure><figure class='plot'><img src='monarch-v3.run1.paging.svg' alt='monarch-v3.run1.paging.svg' /><figcaption>monarch-v3.run1.paging.svg</figcaption></figure></div>
+  </main>
+</body>
+</html>
