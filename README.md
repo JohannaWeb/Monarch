@@ -1,17 +1,5 @@
 # Monarch
 
-Expert LLM fine-tuned specifically for Project Falcon / Juntos — the LGBT+ decentralized community platform.
-
-https://media.discordapp.net/attachments/1483007643529384009/1483008892987244604/image.png?ex=69b90729&is=69b7b5a9&hm=2d7d32452fe1a0bfcfcfd7d4237cf549ae00f911b1ad36af2acbd6a889d660ea&=&format=webp&quality=lossless&width=1121&height=868
-
-## Overview
-
-Monarch is a specialized language model trained on Project Falcon's:
-- **Philosophy & Values** - sovereignty, transparency, decentralization
-- **Architecture** - AT Protocol, DIDs, decentralized identity
-- **Domain Models** - servers, channels, members, messages
-- **Research** - distributed AI coordination, trust systems
-
 Built with:
 - **PyTorch** - for model training
 - **LoRA** (Low-Rank Adaptation) - efficient fine-tuning
